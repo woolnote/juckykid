@@ -1,0 +1,343 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1"/>
+  <title>Crypto Signal Dashboard</title>
+
+  <script src="https://unpkg.com/lightweight-charts@4.2.1/dist/lightweight-charts.standalone.production.js"></script>
+
+  <style>
+    :root{
+      --bg:#020617; --panel:#0b1223; --panel2:#0f172a;
+      --border:rgba(148,163,184,.22);
+      --text:#e5e7eb; --sub:#9ca3af; --muted:#6b7280;
+      --good:#22c55e; --bad:#ef4444; --info:#38bdf8; --violet:#a78bfa; --amber:#f59e0b;
+      --shadow:0 18px 50px rgba(2,6,23,.55);
+      --pill:999px;
+    }
+    *{box-sizing:border-box}
+    html,body{margin:0;padding:0;background:var(--bg);color:var(--text);
+      font-family:system-ui,-apple-system,Segoe UI,Roboto,"Noto Sans TC",sans-serif}
+
+    @keyframes fadeUp { from { opacity:0; transform:translateY(10px);} to { opacity:1; transform:translateY(0);} }
+    .soft-hover { transition: transform .15s ease, border-color .15s ease, filter .15s ease; }
+    .soft-hover:hover { transform: translateY(-1px); filter: brightness(1.04); border-color: rgba(34,197,94,.35); }
+    .page{display:none}
+    .page.active{display:block}
+    .page.active .card{ animation: fadeUp .22s ease-out both; }
+
+    header{
+      position:sticky;top:0;z-index:30;
+      background:rgba(2,6,23,.92);
+      backdrop-filter: blur(14px);
+      border-bottom:1px solid rgba(31,41,55,.9);
+    }
+    .nav{max-width:1240px;margin:0 auto;padding:12px 18px;display:flex;align-items:center;justify-content:space-between;gap:12px;}
+    .brand{display:flex;align-items:center;gap:10px}
+    .mark{width:28px;height:28px;border-radius:10px;background: var(--good);display:flex;align-items:center;justify-content:center;font-weight:900;font-size:12px;color:#022c22;}
+    .title{font-weight:900;letter-spacing:.08em;font-size:13px;text-transform:uppercase}
+    .title span{color:var(--good)}
+    .tabs{display:flex;gap:8px;align-items:center}
+    .tab{
+      padding:7px 12px;border-radius:var(--pill);
+      border:1px solid rgba(55,65,81,.95);
+      background:rgba(15,23,42,.85);
+      color:var(--sub);font-size:12px;user-select:none;
+      transition:all .15s ease;
+    }
+    .tab.active{
+      border-color:rgba(34,197,94,.6);
+      color:#052e1d;
+      background:linear-gradient(to right, var(--good), #16a34a);
+      font-weight:900;
+    }
+
+    .wrap{max-width:1240px;margin:0 auto;padding:16px 18px 28px}
+    .card{border:1px solid var(--border);background:rgba(11,18,35,.92);border-radius:18px;box-shadow:var(--shadow);padding:14px 14px 16px;}
+    .sectionTitle{display:flex;align-items:center;gap:10px;margin:0 0 8px;font-size:15px;font-weight:900;}
+    .badge{font-size:11px;color:var(--sub);padding:3px 9px;border-radius:var(--pill);border:1px solid rgba(148,163,184,.45);background:rgba(15,23,42,.85);}
+    .p{margin:0;color:var(--sub);font-size:12px;line-height:1.7}
+
+    .layout{display:grid;grid-template-columns: 360px 1fr;gap:12px;margin-top:12px;align-items:start;}
+    @media (max-width:980px){.layout{grid-template-columns:1fr}}
+
+    label{display:block;font-size:12px;color:#d1d5db;margin-bottom:6px}
+    input,select{
+      width:100%;padding:9px 10px;border-radius:12px;
+      border:1px solid rgba(51,65,85,.95);
+      background:rgba(15,23,42,.96);
+      color:var(--text);font-size:12px;outline:none;
+    }
+    .field{margin-bottom:10px}
+    .btnrow{display:flex;gap:10px;flex-wrap:wrap;margin-top:8px}
+    .btn{
+      padding:8px 12px;border-radius:var(--pill);
+      border:1px solid rgba(51,65,85,.95);
+      background:rgba(15,23,42,.98);
+      color:var(--sub);font-size:12px;cursor:pointer;
+      transition:transform .15s ease-out, border-color .15s ease-out, color .15s ease-out, filter .15s ease-out;
+    }
+    .btn:hover{border-color:var(--good);color:var(--good);transform:translateY(-1px)}
+    .btn.primary{border:none;background:linear-gradient(to right, var(--good), #16a34a);color:#022c22;font-weight:900;}
+    .btn.primary:hover{filter:brightness(1.05)}
+    .btn.danger:hover{border-color:var(--bad);color:var(--bad)}
+    .btn.icon{padding:8px 10px;display:inline-flex; align-items:center; gap:8px;}
+    .btn.icon .star{font-size:13px; line-height:1; transform: translateY(-1px);}
+    .btn.icon.fav{border-color: rgba(245,158,11,.55);color: var(--amber);}
+
+    .stat{padding:10px 12px;border-radius:14px;border:1px solid rgba(51,65,85,.95);background:rgba(2,6,23,.6);font-size:12px;color:var(--sub);margin-top:10px;line-height:1.7;}
+    .stat b{color:var(--text)}
+
+    .banner{
+      margin-top:10px;
+      padding:10px 12px;
+      border-radius:14px;
+      border:1px solid rgba(51,65,85,.95);
+      background:rgba(2,6,23,.6);
+      display:flex;
+      align-items:flex-start;
+      justify-content:space-between;
+      gap:10px;
+    }
+    .banner strong{font-size:12px}
+    .banner .meta{font-size:11px;color:var(--muted);margin-top:4px}
+    .banner.normal{border-color:rgba(34,197,94,.25)}
+    .banner.event{border-color:rgba(239,68,68,.35); background:rgba(239,68,68,.06)}
+    .pill{
+      padding:4px 10px;border-radius:999px;
+      border:1px solid rgba(148,163,184,.35);
+      background:rgba(15,23,42,.85);
+      font-size:11px;color:var(--sub);
+      white-space:nowrap;
+    }
+    .pill.event{border-color:rgba(239,68,68,.55);color:#fecaca;background:rgba(239,68,68,.12)}
+    .pill.normal{border-color:rgba(34,197,94,.45);color:#bbf7d0;background:rgba(34,197,94,.10)}
+
+    .chartBox{border-radius:14px;overflow:hidden;border:1px solid rgba(30,64,175,.35);background:#020617;height:560px;min-height:560px;}
+    @media (max-width:720px){.chartBox{height:420px;min-height:420px}}
+
+    .afterChart{display:grid;grid-template-columns: 1fr 1fr;gap:12px;margin-top:12px;align-items:start;}
+    @media (max-width:980px){.afterChart{grid-template-columns:1fr}}
+
+    .panel{padding:12px 12px 14px;border-radius:16px;border:1px solid rgba(51,65,85,.95);background:rgba(2,6,23,.6);}
+    .panelHead{display:flex;justify-content:space-between;align-items:center;font-size:12px;color:var(--muted);margin-bottom:8px;gap:10px;}
+    .panelHead .right{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+    .panelBody{font-size:12px;line-height:1.7;color:var(--sub);max-height:280px;overflow:auto;padding-right:6px}
+    .panelBody ul{margin:0;padding-left:18px}
+
+    .eventsTop{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+    .chip{padding:5px 10px;border-radius:999px;border:1px solid rgba(51,65,85,.95);background:rgba(15,23,42,.95);color:var(--sub);font-size:11px;cursor:pointer;user-select:none;transition:all .12s ease;}
+    .chip.active{border-color:rgba(56,189,248,.6);color:#031b2a;background:linear-gradient(to right, var(--info), #0ea5e9);font-weight:900;}
+
+    .eventItem{border:1px solid rgba(51,65,85,.7);background:rgba(2,6,23,.35);border-radius:14px;padding:10px 10px 10px;margin:0 0 10px;}
+    .eventTopRow{display:flex;justify-content:space-between;align-items:flex-start;gap:10px;margin-bottom:6px;}
+    .eventTitle{color:var(--text);font-weight:800;font-size:12px}
+    .eventMeta{color:var(--muted);font-size:11px;white-space:nowrap}
+    .eventTags{display:flex;gap:6px;flex-wrap:wrap;margin-top:6px}
+    .tag{font-size:10px;padding:2px 7px;border-radius:999px;border:1px solid rgba(148,163,184,.35);color:var(--sub);background:rgba(15,23,42,.75);}
+    .tag.good{border-color:rgba(34,197,94,.5);color:var(--good)}
+    .tag.bad{border-color:rgba(239,68,68,.5);color:var(--bad)}
+    .tag.neu{border-color:rgba(148,163,184,.35);color:var(--sub)}
+    .tag.type{border-color:rgba(167,139,250,.45);color:var(--violet)}
+    .tag.fav{border-color:rgba(245,158,11,.55);color:var(--amber)}
+
+    .picker{border:1px solid rgba(51,65,85,.95);background:rgba(15,23,42,.65);border-radius:16px;padding:10px;}
+    .pickerTop{display:flex; gap:8px; align-items:center; justify-content:space-between;margin-bottom:10px;}
+    .pickerTop .current{font-size:12px; font-weight:900; color: var(--text); overflow:hidden; text-overflow:ellipsis; white-space:nowrap;}
+    .pickerTop .sub{font-size:11px; color: var(--muted); overflow:hidden; text-overflow:ellipsis; white-space:nowrap;}
+    .pickerSearch{display:flex; gap:8px; align-items:center;margin-bottom:8px;}
+    .pickerList{max-height:260px; overflow:auto; padding-right:6px;display:flex; flex-direction:column; gap:8px;}
+    .groupTitle{font-size:11px; color: var(--muted);margin:6px 2px 2px;letter-spacing:.08em;text-transform:uppercase;}
+    .itemBtn{display:flex; justify-content:space-between; align-items:center;gap:10px;padding:8px 10px;border-radius:14px;border:1px solid rgba(51,65,85,.7);background:rgba(2,6,23,.35);cursor:pointer;transition: transform .14s ease, border-color .14s ease, filter .14s ease;}
+    .itemBtn:hover{ transform: translateY(-1px); border-color: rgba(56,189,248,.35); filter: brightness(1.03); }
+    .itemBtn.active{ border-color: rgba(34,197,94,.45); }
+    .itemLeft{display:flex; flex-direction:column; gap:2px; min-width:0}
+    .itemName{font-size:12px; font-weight:800; color: var(--text); overflow:hidden; text-overflow:ellipsis; white-space:nowrap;}
+    .itemCode{font-size:11px; color: var(--muted); overflow:hidden; text-overflow:ellipsis; white-space:nowrap;}
+    .starBtn{border:1px solid rgba(51,65,85,.7);background:rgba(15,23,42,.7);color: var(--sub);border-radius:999px;padding:4px 8px;font-size:12px;cursor:pointer;transition: transform .12s ease, filter .12s ease, border-color .12s ease, color .12s ease;}
+    .starBtn:hover{ transform: translateY(-1px); filter: brightness(1.06); border-color: rgba(245,158,11,.5); color: var(--amber); }
+    .starBtn.fav{ border-color: rgba(245,158,11,.55); color: var(--amber); }
+
+    footer{max-width:1240px;margin:0 auto;padding:14px 18px 24px;border-top:1px solid rgba(31,41,55,.9);color:var(--sub);font-size:11px;}
+    footer span{color:var(--muted)}
+  </style>
+</head>
+
+<body>
+<header>
+  <div class="nav">
+    <div class="brand">
+      <div class="mark">DX</div>
+      <div class="title">TRADING <span>DASH</span></div>
+    </div>
+
+    <div class="tabs">
+      <div class="tab active" id="tab-crypto">Crypto 訊號</div>
+    </div>
+
+  </div>
+</header>
+
+<div class="wrap">
+
+  <section class="page active" id="page-crypto">
+    <div class="card soft-hover">
+      <div class="sectionTitle">Crypto Signal Engine <span class="badge">NORMAL + EVENT（即時波動切換）</span></div>
+      <p class="p">NORMAL：高勝率紅單節奏｜EVENT：偵測到大波動後自動切換「吃波動」決策。</p>
+
+      <div class="layout">
+        <aside class="card" style="box-shadow:none;">
+          <div class="field">
+            <label>幣種選擇（搜尋 + 收藏）</label>
+            <div class="picker" id="crypto-picker">
+              <div class="pickerTop">
+                <div style="min-width:0">
+                  <div class="current" id="crypto-current">—</div>
+                  <div class="sub" id="crypto-current-sub">—</div>
+                </div>
+                <button class="btn icon" id="crypto-fav-toggle" type="button" title="收藏/取消收藏">
+                  <span class="star" id="crypto-fav-star">☆</span> 收藏
+                </button>
+              </div>
+              <div class="pickerSearch">
+                <input id="crypto-search" type="text" placeholder="搜尋：btc / eth / xrp / sol..." />
+              </div>
+              <div class="pickerList" id="crypto-list"></div>
+            </div>
+          </div>
+
+          <div class="field">
+            <label>週期</label>
+            <select id="interval-select">
+              <option value="1h">1 小時</option>
+              <option value="4h">4 小時</option>
+              <option value="1d">1 天</option>
+            </select>
+          </div>
+
+          <div class="field">
+            <label>B 模式：平時紅單 + 事件吃波動</label>
+            <div style="display:flex; gap:10px; flex-wrap:wrap; align-items:center;">
+              <label style="display:flex; gap:8px; align-items:center; margin:0;">
+                <input id="bmode-enabled" type="checkbox" checked style="width:auto;"/>
+                啟用 EVENT 自動切換
+              </label>
+              <label style="display:flex; gap:8px; align-items:center; margin:0;">
+                <input id="event-sound" type="checkbox" checked style="width:auto;"/>
+                事件提示音
+              </label>
+            </div>
+          </div>
+
+          <div class="field">
+            <label>EVENT 觸發門檻（WebSocket 即時）</label>
+            <div style="display:grid; grid-template-columns:1fr 1fr; gap:10px;">
+              <div>
+                <label style="margin:0 0 6px">20 秒波動（%）</label>
+                <input id="event-thr-pct" type="number" value="0.9" min="0.2" step="0.1"/>
+              </div>
+              <div>
+                <label style="margin:0 0 6px">成交量倍數（x）</label>
+                <input id="event-vol-mult" type="number" value="2.2" min="1.0" step="0.1"/>
+              </div>
+            </div>
+            <p class="p" style="margin-top:6px;">門檻太低會一直誤觸發；太高會錯過第一下。先用預設。</p>
+          </div>
+
+          <div class="field">
+            <label>EVENT 持續時間（分鐘）</label>
+            <input id="event-hold-min" type="number" value="12" min="1" step="1"/>
+          </div>
+
+          <div class="field">
+            <label>NORMAL（紅單節奏）參數</label>
+            <div style="display:grid; grid-template-columns:1fr 1fr; gap:10px;">
+              <div>
+                <label style="margin:0 0 6px">止損 SL（%）</label>
+                <input id="sl-normal" type="number" value="0.9" min="0.1" step="0.1"/>
+              </div>
+              <div>
+                <label style="margin:0 0 6px">回撤 TP（%）</label>
+                <input id="tp-normal" type="number" value="1.6" min="0.1" step="0.1"/>
+              </div>
+            </div>
+          </div>
+
+          <div class="field">
+            <label>EVENT（吃大波動）參數</label>
+            <div style="display:grid; grid-template-columns:1fr 1fr; gap:10px;">
+              <div>
+                <label style="margin:0 0 6px">止損 SL（%）</label>
+                <input id="sl-event" type="number" value="2.8" min="0.2" step="0.1"/>
+              </div>
+              <div>
+                <label style="margin:0 0 6px">回撤 TP（%）</label>
+                <input id="tp-event" type="number" value="6.5" min="0.2" step="0.1"/>
+              </div>
+            </div>
+            <p class="p" style="margin-top:6px;">EVENT 不是追高，是吃「第一段+延伸段」。會低勝率但大單價值。</p>
+          </div>
+
+          <div class="btnrow">
+            <button class="btn primary" id="refresh-btn" type="button">更新訊號</button>
+            <button class="btn danger" id="force-event-btn" type="button">手動觸發 EVENT</button>
+            <button class="btn" id="force-clear-btn" type="button">清除標記</button>
+          </div>
+
+          <div class="stat">
+            <div><b>模式</b>：<span id="kpi-mode">—</span></div>
+            <div><b>狀態</b>：<span id="kpi-status">—</span></div>
+            <div><b>最新決策</b>：<span id="kpi-signal">—</span></div>
+            <div><b>趨勢/濾網</b>：<span id="kpi-trend">—</span></div>
+            <div><b>收盤價</b>：<span id="kpi-price">—</span></div>
+          </div>
+
+          <div class="banner normal" id="mode-banner">
+            <div>
+              <strong id="mode-banner-title">NORMAL 模式運行中</strong>
+              <div class="meta" id="mode-banner-meta">等待事件觸發…（WebSocket 即時）</div>
+            </div>
+            <div class="pill normal" id="mode-pill">NORMAL</div>
+          </div>
+        </aside>
+
+        <main>
+          <div class="chartBox" id="chart"></div>
+
+          <div class="afterChart">
+            <div class="panel soft-hover">
+              <div class="panelHead">
+                <div>交易紀錄（規則化輸出）</div>
+                <div class="right" id="log-meta">—</div>
+              </div>
+              <div class="panelBody" id="trade-log-body">請按「更新訊號」。</div>
+            </div>
+
+            <div class="panel soft-hover">
+              <div class="panelHead">
+                <div id="events-title-crypto">近期事件（Crypto）</div>
+                <div class="right eventsTop">
+                  <span class="chip active" data-ev-mode="crypto" data-ev-window="7d">7D</span>
+                  <span class="chip" data-ev-mode="crypto" data-ev-window="30d">30D</span>
+                  <span class="chip" data-ev-mode="crypto" data-ev-window="90d">90D</span>
+                  <button class="btn" id="events-refresh-crypto" type="button">重整事件</button>
+                </div>
+              </div>
+              <div class="panelBody" id="events-body-crypto">—</div>
+            </div>
+          </div>
+        </main>
+      </div>
+    </div>
+  </section>
+
+</div>
+
+<footer>
+  本頁提供規則化決策與事件偵測，<span>不保證報酬。大波動模式將放大滑價與回撤風險。</span>
+</footer>
+
+<script src="script_fixed.js"></script>
+</body>
+</html>
